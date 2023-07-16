@@ -1,0 +1,33 @@
+# Simple script to check your Plex server for missing movies
+
+$moviesFile = ".\FamilyVideos.txt"
+$listOfMovies = Get-Content -Path $listOfMoviesFile 
+
+# Plex server URL and API token
+# See https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
+$serverURL = "http://127.0.0.1:32400"
+$APIToken = "TokenGoesHere"
+
+$libraryIndex = "1"
+
+# Get the list of movies from the Plex server
+$plexMoviesURL = "$serverURL/library/sections/$libraryIndex/all?type=1&X-Plex-Token=$APIToken"
+$moviesResponse = Invoke-RestMethod -Uri $plexMoviesURL
+
+# Extract movies from response
+$plexMovies = $moviesResponse.MediaContainer.video | Select-Object -ExpandProperty Title
+
+# Compare Plex with the IMDb list
+$missingMovies = Compare-Object -ReferenceObject $listOfMovies -DifferenceObject $plexMovies |
+                Where-Object { $_.SideIndicator -eq "<=" } |
+                Select-Object -ExpandProperty InputObject
+
+# Display the missing movies
+if ($missingMovies) {
+    Write-Host "The following movies are missing:"
+$missingMovies | sort-object | ForEach-Object {
+        Write-Host $_
+    }
+} else {
+    Write-Host "All movies exist on Plex server."
+}
